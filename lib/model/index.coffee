@@ -100,7 +100,7 @@ copy =(s,t)->
 		else
 			t[k] = s[k]
 
-class Model
+exports.Model = class Model
 	constructor: (params)->
 		@attrs = {}
 		copy @Defaults, @attrs
@@ -256,7 +256,13 @@ class Model
 			return @errors unless @valid
 			
 	@use:(adapter, options)->
-		require(adapter).call(@)
+		require('./adapters/'+adapter).call(@, options)
 				
-
-exports.Model = Model
+exports.load=(dir)->
+	fs = require 'fs'
+	files = fs.readdirSync dir
+	for file in files
+		model = require dir+'/'+file
+		for ex of model
+			exports[ex] = model[ex]
+		

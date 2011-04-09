@@ -1,4 +1,4 @@
-module.exports =->
+module.exports =(options)->
 	cradle = require 'cradle'
 	@client = new cradle.Connection options.host, options.port, options.cradle
 		
