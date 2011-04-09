@@ -1,0 +1,7 @@
+{
+  "name":"muse",
+  "version":"0.0.1",
+  "engines":{ "node": ">= 0.4.4"},
+  "author":"Adrian Cushman <acushman@gmail.com>"
+  "main":"./lib"
+}
