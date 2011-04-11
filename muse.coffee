@@ -10,3 +10,5 @@ exports.config =
 		load = @load
 		exports.config = require file
 		exports.load = load
+		
+exports.scratch = require './lib/middleware/scratch'
