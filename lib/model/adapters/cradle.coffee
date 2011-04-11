@@ -19,5 +19,11 @@ module.exports =(options)->
 				return cb null, _.map(rows, (row)->new model(row.value))
 				
 	@::save =(cb)->
-		cb ?= (->) #cradle likes to have a callback
-		model.db.save @attrs._id, @attrs._rev, @attrs, cb
+ 		#cradle likes to have a callback
+		model.db.save @attrs, (err, resp)->
+			if err
+				cb(err) if cb
+			else
+				@attrs._id = resp._id
+				@attrs._rev = resp._rev
+				cb(null, resp)
