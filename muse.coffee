@@ -12,3 +12,12 @@ exports.config =
 		exports.load = load
 		
 exports.scratch = require './lib/middleware/scratch'
+exports.csrf = require './lib/middleware/csrf'
+
+
+exports.util = require './lib/util'
+
+exports.template = require './lib/template'
+
+for log of exports.util.logger
+	exports[log] = exports.util.logger[log]

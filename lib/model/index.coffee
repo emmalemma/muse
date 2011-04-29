@@ -1,119 +1,315 @@
 
-matchers =
-	string: (options)->
-		options ?= {}
-		(key, value)->
-			unless typeof value == 'string'
-				unless typeof value == 'undefined' and options.optional
-					@error key, "must be a string."
-			else
-				if value.length == 0
-					unless options.blank
-						@error key, "may not be blank."
-				else if options.length and value.length != options.length
-					@error key, "must be #{options.length} characters."
-				else if options.min and value.length < options.min
-					@error key, "must be longer than #{options.min-1} characters."
-				else if options.max and value.length > options.max
-					@error key, "must be shorter than #{options.min+1} characters."
-				else if options.matches and not options.matches.test(value)
-						@error key, "must match #{options.matches}."
-			options
-			
-	integer: (options)->
-		options ?= {}
-		(key, value)->
-			unless typeof value == 'number' and value % 1 == 0
-				@error key, "must be an integer."	
-			else
-				if options.min and value < options.min
-					@error key, "must be greater than #{options.min-1}."
-				else if options.max and value > options.max
-					@error key, "must be less than #{options.max+1}."
-			options
-				
-	boolean: (options)->
-		options ?= {}
-		(key, value)->
-			unless typeof value == 'boolean'
-				@error key, "must be a boolean."
-				
-	oneof: (array)->
-		(key, value)->
-			unless value in array
-				@error key, "must be one of #{array.join(', ')}."
-				
-	date: (options)->
-		(key, value)->
-			if isNaN (new Date(value).valueOf())
-				@error key, "must be a valid date."
-				
-	email: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i
-	url: /((https?:\/\/)?([-\w]+\.[-\w\.]+)+\w(:\d+)?(\/([-\w\/_\.]*(\?\S+)?)?)*)/
-	phone: /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/
-	
-	optional: 'optional'
-	required: 'required'
-	blank: 'blank'
-	
-functions= ['string','integer','oneof','date','boolean']
-constants= ['email','url','phone','optional','required','blank']
-
-extractor=(key)->
-	(options)->
-		options ?= {}
-		options.type = key
-		options
-	
-extractors = {}
-for fn in functions
-	extractors[fn] = extractor fn
-for cn in constants
-	extractors[cn] = cn
-	
-extract=(key, obj)->
-	exts = undefined
-	for k of obj
-		if typeof obj[k] == 'object'
-			if obj[k]._options?
-				ext = obj[k]._options[key]
-				ext?.type = obj[k]._type
-			else
-				ext = extract(key, obj[k])
-			if typeof ext != 'undefined'
-				if typeof obj[k].length == 'number'
-					ext = [ext[0]]
-				else
-					exts ?= {}
-					
-				exts[k] = ext
-	exts
-	
 copy =(s,t)->
 	for k of s
-		if typeof s[k] == 'object'
-			if typeof s[k].length == 'number'
-				t[k] = []
-			else
+		if s[k]? and typeof s[k] is 'object'
+			if s[k].constructor == Object
 				t[k] = {}
-			copy s[k], t[k]
+				copy s[k], t[k]
+			else if s[k].constructor == Array
+				t[k] = []
+				copy s[k], t[k]
+			else if s[k].constructor == Date
+				t[k] = new Date s[k]
 		else
 			t[k] = s[k]
 
+validations = 
+	with:(schema)->
+		try
+			return schema.call(@)
+		catch e
+			if e.type is 'undefined_method' and e.arguments[1] is this
+				throw new Error "I don't know how to validate as '#{e.arguments[0]}'."
+			else throw e
+			
+	_:(options)->
+		validate =-> null
+		validate.__proto__ = options
+		options.type = '_'
+		return validate
+	
+	array:(cmp...)->
+		if typeof cmp[0] is 'object'
+			options = cmp.shift()
+		else
+			options = {}
+		
+		unless cmp?
+			cmp = options
+			options = {}
+			
+		validate = (value) ->
+			unless typeof value is 'object' and typeof value.length is 'number'
+				return 'must be an array'
+			errors = null
+			for key of value
+				err = []
+				for c in cmp
+					err.push c(value[key])
+					unless err[err.length-1]
+						err = null
+						break
+				if err
+					errors ?= {}
+					errors[key] = err.join(' or ')
+			return errors
+		
+		options.type = 'array'
+		options.cmp = cmp
+		validate.__proto__ = options
+		validate
+	
+	in:(options, cmp)->
+		options ?= {}
+		unless cmp?
+			cmp = options
+			options = {}
+			
+		unless typeof cmp is 'object' and typeof cmp.length is 'number'
+			throw new Error 'Comparison for @in must be an array.'
+			return
+			
+		validate = (value) ->
+			err = []
+			for c in cmp
+				if typeof c is 'function'
+					err.push c(value)
+				else
+					err.push "must be `#{c}`" if c != value
+					
+				unless err[err.length-1]
+					err = null
+					break
+					
+			return err.join(' or ') if err
+		
+		options.type = 'in'
+		validate.__proto__ = options
+		validate
+	
+	object:(options, cmp)->
+		options ?= {}
+		
+		unless cmp?
+			cmp = options
+			options = {}
+			
+		unless typeof cmp is 'object'
+			throw new Error 'Comparison for @object must be an object.'
+			return
+		
+		if typeof cmp.length is 'number'
+			return validations.array options, cmp...
+		
+			
+		regexes = {}
+		for key of cmp
+			if match = /^m\/(.*)\/([gim]*)$/.exec key
+				regexes[key] = new RegExp match[1],match[2]
+		
+		validate = (value) ->
+			unless typeof value is 'object'
+				return 'must be an object'
+		
+			errors = null
+			
+			for key of value
+				unless key of cmp
+					if cmp.__?
+						err = cmp.__(value[key])
+						if err
+							errors ?= {}
+							errors[key] = err
+					else if regexes
+						err = []
+						for rk of regexes
+							if regexes[rk].test key
+								err.push cmp[rk](value[key])
+								unless err[err.length-1]
+									err = null
+									break
+							else
+								err.push "not allowed by #{rk}"
+						if err
+							errors ?= {}
+							errors[key] = err.join(' or ')
+					else
+						errors ?= {}
+						errors[key] = 'not allowed'
+				else
+					unless typeof cmp[key] is 'function'
+						throw new Error "Schema error: #{key} is not a validation. Did you forget an @?"
+					err = cmp[key](value[key])
+					if err
+						errors ?= {}
+						errors[key] = err
+			for key of cmp
+				continue if key is '__' or key of regexes
+				unless key of value or cmp[key].optional?
+					errors ?= {}
+					errors[key] = 'required'
+					
+			return errors
+		
+		options.type = 'object'
+		options.cmp = cmp
+		validate.__proto__ = options
+		validate
+		
+	string:(options = {})->
+		
+		matchers = 
+			email: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i
+			url: /((https?:\/\/)?([-\w]+\.[-\w\.]+)+\w(:\d+)?(\/([-\w\/_\.]*(\?\S+)?)?)*)/
+			phone: /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/
+			zip: /^\d{5}(?:-\d{4})?$/
+			
+		if options.matches?	
+			if typeof options.matches is 'string'
+				options.matches = matchers[options.matches]
+			unless typeof options.matches is 'function' and options.matches.constructor is RegExp
+				throw new Error "Schema error: @string match `#{options.matches}` is not a RegExp or known matcher."
+	
+		validate = (value) ->
+			unless typeof value is 'string'
+				return 'must be a string'
+			else if options.matches 
+				unless options.matches.test(value)
+					return "must match #{options.matches}"
+		
+		options.coerce ?=(value)->value.toString()
+		options.type = 'string'
+		validate.__proto__ = options
+		validate
+
+	integer:(options = {})->
+		validate = (value) ->
+			unless typeof value is 'number' and parseInt(value) == value and not isNaN(value)
+				return 'must be an integer'
+				
+		options.coerce ?=(value)->parseInt(value)
+		
+		options.type = 'integer'
+		validate.__proto__ = options
+		validate
+		
+				
+	boolean: (options = {})->
+		
+		validate =(value)->
+			unless typeof value == 'boolean'
+				return "must be a boolean"
+				
+		options.coerce ?=(value)->value and true
+		options.type = 'boolean'
+		validate.__proto__ = options
+		validate
+	
+	date: (options = {})->
+		validate = (value)->
+			if isNaN (new Date(value).valueOf())
+				return "must be a valid date"
+					
+		options.coerce ?=(value)->new Date(value)
+		options.type = 'date'
+		validate.__proto__ = options
+		validate
+					
+
+validations.__defineGetter__ '__', validations._
+
+at_validation = validations.object
+at_validation.__proto__ = validations
+
+class Attributes
+	constructor:(attrs, @values = {})->
+		for key of attrs
+			if attrs[key].type is 'object'
+				@addSubAttrs key, attrs[key]
+			else
+				@addAttr key, attrs[key]
+	
+	set:(values)->
+		for key of values
+			if @hasOwnProperty(key)
+				@[key] = values[key]
+			else if @__?
+				@addAttr key, @__
+				@[key] = values[key]
+			else
+				throw new Error "Cannot set attribute '#{key}'."
+	
+	addAttr:(key, validate)->
+		if key is '__'
+			@__ = validate
+			return
+		if validate.coerce
+			@__defineSetter__ key, (val)->
+				val = validate.coerce(val)
+				unless error = validate(val)
+					@values[key] = val
+				else
+					throw new Error "key: #{key}, value: #{val} " + JSON.stringify(error)
+		else
+			@__defineSetter__ key, (val)->
+				unless error = validate(val)
+					@values[key] = val
+				else
+					throw new Error "key: #{key}, value: #{val} " + JSON.stringify(error)
+			
+		@__defineGetter__ key, ->@values[key]
+		
+	addSubAttrs:(key, opts)->
+		@values[key] = {}
+		attrs = new Attributes(opts.cmp, @values[key])
+		@__defineGetter__ key, ->attrs
+		@__defineSetter__ key, (val)->attrs.set val
+		
+
+
 exports.Model = class Model
 	constructor: (params)->
-		@attrs = {}
-		copy @Defaults, @attrs
-		@set(params)
+		# @_attrs = new Attributes(@schema)
+		# 	@__defineGetter__ 'attrs', ->@_attrs
+		# 	@__defineSetter__ 'attrs', (val)->@_attrs.set val
 		
+		@attrs = {}
+		copy @defaults, @attrs
+		
+		@set params
+	
+	flat_errors:->
+		flatten=(key, obj)->
+			unless typeof obj is 'object'
+				return obj
+			out = {}
+			for k of obj
+				if key
+					new_key = key + '.' + k
+				else new_key = k
+				if typeof obj[k] is 'object'
+					copy flatten(new_key, obj[k]), out
+				else
+					out[new_key] = obj[k]
+			out
+			
+		flatten(null, @errors)
+	
 	set:(params)->
 		copy params, @attrs
 		@validate()
 		
+	validate:->
+		@errors = @validation(@attrs)
+		@valid = not @errors
+		
+	toString:->@attrs.toString()
+	
+	
 	get:(path)->
 		if path of @attrs
 			return @attrs[path]
-			
+		
 		else if path.indexOf('.') > 0
 			path = path.split('.')
 			o = @attrs
@@ -123,16 +319,15 @@ exports.Model = class Model
 				else
 					o = o[p]
 			return o
-		
-	# Save from a form
-	post:(body)->
-		for path of body
-			opt = @options(path)
 			
-			if opt.type is 'integer'
-				body[path] = parseInt(body[path])
-				if isNaN(body[path])
-					body[path] = 0
+	# Save from a form
+	post:(fields, body)->
+		for path in fields
+			opt = @options(path)
+			continue unless opt
+			
+			if opt.coerce
+				body[path] = opt.coerce(body[path])
 				
 			if path.indexOf('.') > 0
 				parts = path.split('.')
@@ -142,7 +337,6 @@ exports.Model = class Model
 						if typeof o[p] is 'object'
 							o[p] = JSON.parse(body[path])
 						else
-							console.log 'setting',o,p,'to',body[path]
 							o[p] = body[path]
 					else 
 						unless o[p]?
@@ -157,107 +351,31 @@ exports.Model = class Model
 		@validate()
 		
 	options:(path)->
-		if path of @_options
-			o = @_options[path]
+		if path of @validation.cmp
+			o = @validation.cmp[path]
 			
 		else if path.indexOf('.') > 0
 			path = path.split('.')
-			o = @_options
+			o = @validation
 			while p = path.shift()
+				if o.type is 'object'
+					o = o.cmp
+					
 				unless o[p]?
 					return undefined
-				else
-					o = o[p]
-					
-		if typeof o[1] == 'object'
-			return o[1]
-		return o
+				
+				o = o[p]
+		return o?.__proto__
 		
-	@initialize:->
-		@compile_validation()
-		@compile_options()
-		@compile_defaults()
-		#@compile_form()
-		
-		
-	@schemize:(scheme)->
-		@scheme = scheme
-		@initialize()
-		
-	@compile_options:->
-		`with(extractors){
-			exec = "options = ("+this.scheme.toString()+")()";
-			eval(exec);
-		}`
-		
-		@::_options = options
-		return
-		
-	@compile_defaults:->
-		@::Defaults = extract('default', @::Options)
-		
-	@compile_form:->
-		@::form = extract('form', @::Options)
-		
-	@compile_validation:->
-		`with(matchers){
-			exec = "this.validation = ("+this.scheme.toString()+")()";
-			eval(exec);
-		}`
-		
-		@::errors = {}
-		@::valid = true
-		@::error = (name, err) ->
-			@valid = false
-			if @errors[name]
-				@errors[name].push err
-			else @errors[name] = [err]
-			
-		model = @
-		
-		@::validate =->
-			_err = false
-			@errors = {}
-			@valid = true
-			
-			match = (src, comp, path) =>
-				if typeof comp == "object"
-					#If it's an arroy
-					if typeof comp.length == "number"
-						unless typeof src == "object" and typeof src.length == "number"
-							unless typeof src == 'undefined' and comp.length > 0 and comp[comp.length-1].optional
-								@error path, "must be an array."
-						else
-							matcher = comp[0]
-							for i of src
-								match(src[i], matcher, path+"[#{i}]")
-					else
-						unless typeof src == "object"
-							unless typeof src == "undefined" and comp.optional
-								@error path, "must be an object."
-						else
-							for key of comp
-								continue if key == '__'
-								if path
-									newpath = path + '.' + key
-								else
-									newpath = key
-								match(src[key], comp[key], newpath)
-							for key of src
-								unless key of comp
-									if comp['__']
-										match(src[key], comp['__'], path+'.'+key)
-									else unless key in ['prototype', '__super__']
-										@error path, "Extra field #{key} not permitted."
-				else if typeof comp == "function"
-					comp.call(@, path, src)
-					
-			match(@attrs, model.validation, null)
-			return @errors unless @valid
-			
+	@schemize:(schema)->
+		@::schema = at_validation.with schema
+		@::validation = at_validation.object @::schema
+	
+	@makeSetters:->
+	
 	@use:(adapter, options)->
 		require('./adapters/'+adapter).call(@, options)
-				
+	
 exports.load=(dir)->
 	fs = require 'fs'
 	files = fs.readdirSync dir
