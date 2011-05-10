@@ -19,5 +19,9 @@ exports.util = require './lib/util'
 
 exports.template = require './lib/template'
 
+exports.controller = require './lib/controller'
+
+exports.vows = require './lib/vows'
+
 for log of exports.util.logger
 	exports[log] = exports.util.logger[log]

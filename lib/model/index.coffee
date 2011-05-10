@@ -13,7 +13,7 @@ copy =(s,t)->
 		else
 			t[k] = s[k]
 
-validations = 
+validators = exports.validators =
 	with:(schema)->
 		try
 			return schema.call(@)
@@ -99,7 +99,7 @@ validations =
 			return
 		
 		if typeof cmp.length is 'number'
-			return validations.array options, cmp...
+			return validators.array options, cmp...
 		
 			
 		regexes = {}
@@ -108,7 +108,7 @@ validations =
 				regexes[key] = new RegExp match[1],match[2]
 		
 		validate = (value) ->
-			unless typeof value is 'object'
+			unless typeof value is 'object' and value.constructor is Object
 				return 'must be an object'
 		
 			errors = null
@@ -166,6 +166,7 @@ validations =
 			
 		if options.matches?	
 			if typeof options.matches is 'string'
+				options.match_name ?= options.matches
 				options.matches = matchers[options.matches]
 			unless typeof options.matches is 'function' and options.matches.constructor is RegExp
 				throw new Error "Schema error: @string match `#{options.matches}` is not a RegExp or known matcher."
@@ -175,7 +176,8 @@ validations =
 				return 'must be a string'
 			else if options.matches 
 				unless options.matches.test(value)
-					return "must match #{options.matches}"
+					return "must match #{options.match_name or options.matches}"
+			null
 		
 		options.coerce ?=(value)->value.toString()
 		options.type = 'string'
@@ -216,10 +218,10 @@ validations =
 		validate
 					
 
-validations.__defineGetter__ '__', validations._
+validators.__defineGetter__ '__', validators._
 
-at_validation = validations.object
-at_validation.__proto__ = validations
+at_validation = validators.object
+at_validation.__proto__ = validators
 
 class Attributes
 	constructor:(attrs, @values = {})->
@@ -275,7 +277,6 @@ exports.Model = class Model
 		
 		@attrs = {}
 		copy @defaults, @attrs
-		
 		@set params
 	
 	flat_errors:->
@@ -295,9 +296,9 @@ exports.Model = class Model
 			
 		flatten(null, @errors)
 	
-	set:(params)->
+	set:(params, validate = true)->
 		copy params, @attrs
-		@validate()
+		@validate() if validate
 		
 	validate:->
 		@errors = @validation(@attrs)
@@ -375,7 +376,14 @@ exports.Model = class Model
 	
 	@use:(adapter, options)->
 		require('./adapters/'+adapter).call(@, options)
-	
+
+
+exports.Mock =->
+	_use = exports.Model.use
+	exports.Model.use =(adapter, options)->
+		options.mock = true
+		_use.call(@, adapter, options)
+
 exports.load=(dir)->
 	fs = require 'fs'
 	files = fs.readdirSync dir
