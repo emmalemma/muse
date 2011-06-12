@@ -1,7 +1,7 @@
 exports.token=token=(length)->
 	#dead simple random token generator using builtin base36
-	if length > 100
-		return token(100) + token(length-100)
+	if length > 32
+		return token(32) + token(length-32)
 		
 	length ||= 15
 	

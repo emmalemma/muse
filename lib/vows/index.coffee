@@ -1,8 +1,6 @@
 vows = require 'vows'
 should = require 'should'
 assert = require 'assert'
-express = require 'express'
-events = require 'events'
 
 context_for =(route, sit, request, controller)->
 

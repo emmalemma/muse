@@ -1,27 +1,38 @@
-exports.model = require('./lib/model')
-exports.Model = exports.model.Model
+global.Muse = module.exports = {}
 
-exports.pollute = (modules) ->
+Muse.ENV = process.env.NODE_ENV
+
+Muse.model = require('./lib/model')
+Muse.Model = Muse.model.Model
+
+Muse.pollute = (modules) ->
 	for name of modules
 		global[name] = modules[name]
 		
-exports.config =
+Muse.config =
 	load: (file)->
 		load = @load
-		exports.config = require file
-		exports.load = load
+		Muse.config = require file
+		Muse.load = load
 		
-exports.scratch = require './lib/middleware/scratch'
-exports.csrf = require './lib/middleware/csrf'
+Muse.scratch = require './lib/middleware/scratch'
+Muse.csrf = require './lib/middleware/csrf'
 
 
-exports.util = require './lib/util'
+Muse.util = require './lib/util'
 
-exports.template = require './lib/template'
+Muse.view = require './lib/view'
+Muse.View = Muse.view.View
 
-exports.controller = require './lib/controller'
+Muse.controller = require './lib/controller'
 
-exports.vows = require './lib/vows'
+Muse.router = require './lib/router'
 
-for log of exports.util.logger
-	exports[log] = exports.util.logger[log]
+Muse.vows = require './lib/vows'
+
+Muse.paradigm = require './lib/paradigm'
+
+Muse.server = require './lib/server'
+
+for log of Muse.util.logger
+	Muse[log] = Muse.util.logger[log]

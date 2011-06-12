@@ -11,6 +11,8 @@ settings=
 module.exports =(persist)->
 	settings.persist = persist if persist
 	(req, res, next)->
+		unless req.session?
+			throw new Error "Scratch requires session middleware."
 		#Initialize scratchpad if it doesn't exist.
 		req.session.scratchpad ?= {}
 		#Store the current scratchpad while we process this request.
@@ -32,7 +34,7 @@ module.exports =(persist)->
 				
 			else
 				return req.scratchpad[key]?.value
-				
+		
 		#Utility for repersisting values
 		#equivalent to `scratch key, undefined, persist`
 		req.rescratch =(key, persist)->

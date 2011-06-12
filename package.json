@@ -1,6 +1,6 @@
 {
   "name":"muse",
-  "version":"0.0.1",
+  "version":"0.1.0",
   "engines":{ "node": ">= 0.4.4"},
   "author":"Adrian Cushman <acushman@gmail.com>",
   "main":"muse.coffee"

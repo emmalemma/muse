@@ -1,0 +1,38 @@
+info it worked if it ends with ok
+verbose cli [ 'node',
+verbose cli   '/Users/adrian/local/node/bin/npm',
+verbose cli   'install',
+verbose cli   'vows' ]
+info using npm@1.0.10
+info using node@v0.4.8
+verbose config file /Users/adrian/.npmrc
+verbose config file /usr/local/etc/npmrc
+silly testEngine { name: 'muse',
+silly testEngine   version: '0.0.1',
+silly testEngine   engines: { node: '>= 0.4.4' },
+silly testEngine   author: 
+silly testEngine    { name: 'Adrian Cushman',
+silly testEngine      email: 'acushman@gmail.com' },
+silly testEngine   main: 'muse.coffee',
+silly testEngine   _id: 'muse@0.0.1',
+silly testEngine   dependencies: {},
+silly testEngine   devDependencies: {},
+silly testEngine   _engineSupported: true,
+silly testEngine   _npmVersion: '1.0.10',
+silly testEngine   _nodeVersion: 'v0.4.8',
+silly testEngine   _defaultsLoaded: true }
+verbose caching /Users/adrian/Projects/muse/package.json
+verbose loadDefaults muse@0.0.1
+verbose from cache /Users/adrian/Projects/muse/package.json
+verbose into /Users/adrian/Projects/muse [ 'vows' ]
+verbose cache add [ 'vows', null ]
+ERR! couldn't read package.json in vows
+ERR! Error: ENOENT, No such file or directory 'vows/package.json'
+ERR! Report this *entire* log at:
+ERR!     <http://github.com/isaacs/npm/issues>
+ERR! or email it to:
+ERR!     <npm-@googlegroups.com>
+ERR! 
+ERR! System Darwin 10.6.0
+ERR! command "node" "/Users/adrian/local/node/bin/npm" "install" "vows"
+verbose exit [ 2, true ]
