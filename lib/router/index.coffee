@@ -1,11 +1,17 @@
 connect = require 'connect'
 
 router = module.exports =
-	controller: (controllers) ->
+	controller: (options, controllers) ->
+		unless controllers?
+			controllers = options
+			options = {}
 		for controller of controllers
-			@route controllers[controller], Muse.controller[controller]
+			@route options, controllers[controller], Muse.controller[controller]
 		
-	route: (routes, controller = null) ->
+	route: (options, routes, controller = null) ->
+		unless routes?
+			routes = options
+			options = {}
 		for route of routes
 			stack = []
 			for method of routes[route]
@@ -17,6 +23,9 @@ router = module.exports =
 					
 				if controller and typeof call is 'string'
 					call = controller[call]
+				
+				if rx = route.match /^m\|(.*)$/
+					route = new RegExp(rx[1])
 				
 				for method in stack
 					@[method].bind(@) route, call

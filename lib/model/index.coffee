@@ -323,6 +323,7 @@ exports.Model = class Model
 			
 	# Save from a form
 	post:(fields, body)->
+		Muse.log 'posting',fields, body
 		for path in fields
 			opt = @options(path)
 			continue unless opt

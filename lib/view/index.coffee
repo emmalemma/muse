@@ -17,10 +17,10 @@ exports.load = (dir) ->
 	engine = require('./engines/coffeekup').using(require dir+'/helpers')
 	loadDir dir
 	
-exports.render = (name, context) ->
+exports.render = (name, context, options) ->
 	unless name of views
 		Muse.err "I don't have a view called '#{name}'."
-	views[name].render context
+	views[name].render context, options
 
 exports.renderer = (name, context, options) ->
 	(req, res) ->
@@ -46,22 +46,36 @@ exports.View = class View
 		@template = engine.compile options.template if options.template
 
 	
-	render : (context) ->
+	render : (context, options = {}) ->
+		if options.template_chain?
+			console.log 'rendering ',@name,'chain', context.template_chain, 'for', options.template_chain
+			console.log 'blocks:', [name for name of context._blocks]
+			if @name in options.template_chain
+				unless context.template_chain?
+					return null
+				i = options.template_chain.indexOf(@name)
+				while options.template_chain[i]?
+					context.template_chain.push options.template_chain[i]
+					i++
+				Muse.log 'new template chain:',context.template_chain
+				return blocks: context._blocks, template_chain: context.template_chain
+		
 		context.template_chain ?= []
-		context.template_chain.push @name
+		unless options.partial
+			context.template_chain.push @name
 		
 		blocks = context._blocks ?= {}
 		
 		for yield of @yields
 			unless blocks[yield]?
 				try
-					blocks[yield] = @yields[yield] context
+					blocks[yield] = @yields[yield] context, options
 				catch e
 					Muse.err "Error caught rendering #{@name}:#{yield}."
 					throw e
 		
 		if @inherit
-			views[@inherit].render context
+			views[@inherit].render context, options
 		else
 			try
 				@template context

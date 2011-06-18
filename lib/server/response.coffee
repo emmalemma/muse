@@ -34,3 +34,7 @@ response.cookie =(name, value, options = {})->
 	
 response.clearCookie =(name)->
 	@cookie name, '', expires: new Date(0)
+	
+response.send = (data, options={})->
+	@setHeader 'Content-Type', options.type or 'text/html'
+	@end(data)

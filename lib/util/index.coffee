@@ -23,4 +23,9 @@ exports.line=(offset=1)->
 		Muse.err "Can't parse this stack:", stack
 		return 'UNKNOWN'
 	
+#Convert to "JSON" with functions.
+exports.fnJSON =(data)->
+	JSON.stringify data, (key, val)->
+		if typeof val is 'function' then "ƒ#{val.toString().replace(/\"/,'"')}ƒ" else val
+	
 exports.logger = require './logger'

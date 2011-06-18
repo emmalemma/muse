@@ -10,6 +10,7 @@ exports.check = (options)->
 			unless req.body.csrf and req.body.csrf == req.session.csrf or req.url in exempt
 				return next new Error "Cross-site request forgery attempt discovered!"
 			delete req.body.csrf
+		res.context.csrf = Muse.csrf.token(req, res)
 		return next()
 		
 exports.ignore =(route)->

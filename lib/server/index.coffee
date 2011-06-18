@@ -40,5 +40,6 @@ server.error =(fn)->
 		server.use fn
 		
 server.start =(args...)->
+	Muse.paradigm.start(server)
 	server.use Muse.router.middleware
-	server.listen args...
+	server.listen args...      

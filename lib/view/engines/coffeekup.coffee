@@ -4,19 +4,20 @@ locals =
 	partial: (name, options = {}) ->
 		for option of options
 			ck_options.context[option] = options[option]
-		text Muse.view.render name, ck_options.context
+		text Muse.view.render name, ck_options.context, partial: true
 		
 	yield: (name, fn) ->
 		blocks = (context = ck_options.context)._blocks
 		
-		if name of blocks
-			text blocks[name]
-		else
-			if typeof fn is 'string'
-				text fn
-			else if typeof fn is 'function'
-				fn.call(context)
-	
+		div id: "yield:#{name}", ->
+			if name of blocks
+				text blocks[name]
+				delete blocks[name]
+			else
+				if typeof fn is 'string'
+					text fn
+				else if typeof fn is 'function'
+					fn.call(context)
 	# Utility method that does nothing
 	ignore:->
 		
