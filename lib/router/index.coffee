@@ -42,6 +42,28 @@ router = module.exports =
 	middleware:->
 		throw new Error "No routes defined."
 		
+	resource:(name, options = {})->
+		url = options.url ?= '/'
+		names = options.plural ?= name + 's'
+		
+		controllers = {}
+		
+		propername = name
+		propername[0] = propername[0].toUpperCase()
+		
+		if options.before?
+			controllers[propername] = {}
+			controllers[propername]["m|#{url}#{name}(.*)"] = all: options.before
+			@controller controllers
+			
+		controllers[propername] = {}
+		controllers[propername]["#{url}#{names}"] = {get: 'list', post:'create'}
+		controllers[propername]["#{url}#{name}/:id"] = {get: 'show', post:'update'}
+		controllers[propername]["#{url}#{name}/:id/destroy"] = {post: 'destroy'}
+		
+		@controller controllers
+			
+		
 router.controllers = router.controller
 router.routes = router.route
 

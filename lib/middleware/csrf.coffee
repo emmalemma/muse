@@ -6,6 +6,7 @@ exports.token = (req, res)->
 	
 exports.check = (options)->
 	return (req, res, next)->
+		Muse.log 'checking csrf:',req.session.csrf
 		if req.method.toLowerCase() == 'post'
 			unless req.body.csrf and req.body.csrf == req.session.csrf or req.url in exempt
 				return next new Error "Cross-site request forgery attempt discovered!"

@@ -58,10 +58,10 @@ client_script =->
 					if anchor = atag e.target
 						#did not click an anchor
 						
-						if anchor.hash
+						if anchor.href.split('#')[0] == window.location.href.split('#')[0]
 							#clicked a hash link
 							return undefined
-								
+						
 						Muse.paradigm.browser.get anchor.href
 					
 						e.preventDefault()
@@ -91,20 +91,28 @@ client_script =->
 					else
 						return undefined
 						
-				get:(url)->
+				get:(url, state = true)->
 					document.title = 'Loading...'
-					Muse.paradigm.history.pushState {template_chain: []}, 'Loading...', url
+					if state
+						Muse.paradigm.history.pushState {template_chain: []}, 'Loading...', url
 					Muse.paradigm.call 'Muse.paradigm.browser.get', url, @template_chain, @callback
+					@reload_timer = setTimeout @reload, @timeout
 					
-				post:(url, body)->
+				post:(url, body, state = true)->
 					document.title = 'Loading...'
-					Muse.paradigm.history.pushState {template_chain: []}, 'Loading...', url
+					if state
+						Muse.paradigm.history.pushState {template_chain: []}, 'Loading...', url
 					Muse.paradigm.call 'Muse.paradigm.browser.post', url, @template_chain, body, @callback
+					@reload_timer = setTimeout @reload, @timeout
+				
+				reload:->document.location = document.location
+				timeout:3000
+				reload_timer:null
 				
 				callback:(resp)->
+					clearTimeout Muse.paradigm.browser.reload_timer
 					switch resp.action
 						when 'yield'
-							Muse.paradigm.history.replaceState {template_chain: resp.template_chain}, '', resp.redirect?.url
 							Muse.paradigm.browser.template_chain = resp.template_chain
 							for block of resp.blocks
 								el = document.getElementById("yield:#{block}")
@@ -121,6 +129,9 @@ client_script =->
 							Muse.paradigm.browser.run_scripts document.getElementsByTagName('script')
 						when 'redirect'
 							document.location = resp.target
+					
+					document.title = resp.title or "Title"
+					Muse.paradigm.history.replaceState {template_chain: resp.template_chain}, document.title, resp.redirect?.url
 							
 				#Script tags added by innerHTML don't get executed... Thus this hack.
 				run_scripts:(scripts)->
@@ -148,6 +159,12 @@ client_script =->
 	
 	if Muse.config.paradigm.browser and Muse.paradigm.history
 		document.addEventListener 'click', Muse.paradigm.browser.onclick
+		firstPop = true
+		window.addEventListener 'popstate', ->
+			if firstPop
+				return firstPop = false
+			Muse.paradigm.browser.get(document.location.href, false)
+			
 		Muse.paradigm.browser.init()
 		
 	document.onready = Muse.ready

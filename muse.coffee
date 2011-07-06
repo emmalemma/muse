@@ -2,6 +2,8 @@ global.Muse = module.exports = {}
 
 Muse.ENV = process.env.NODE_ENV
 
+Muse.util = require './lib/util'
+
 Muse.model = require('./lib/model')
 Muse.Model = Muse.model.Model
 
@@ -19,7 +21,6 @@ Muse.scratch = require './lib/middleware/scratch'
 Muse.csrf = require './lib/middleware/csrf'
 
 
-Muse.util = require './lib/util'
 
 Muse.view = require './lib/view'
 Muse.View = Muse.view.View

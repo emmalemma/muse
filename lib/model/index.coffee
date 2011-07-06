@@ -102,9 +102,10 @@ validators = exports.validators =
 			return validators.array options, cmp...
 		
 			
-		regexes = {}
+		regexes = null
 		for key of cmp
 			if match = /^m\/(.*)\/([gim]*)$/.exec key
+				regexes ?= {}
 				regexes[key] = new RegExp match[1],match[2]
 		
 		validate = (value) ->
@@ -143,8 +144,9 @@ validators = exports.validators =
 					if err
 						errors ?= {}
 						errors[key] = err
+					
 			for key of cmp
-				continue if key is '__' or key of regexes
+				continue if key is '__' or regexes? and key of regexes
 				unless key of value or cmp[key].optional?
 					errors ?= {}
 					errors[key] = 'required'
@@ -267,9 +269,8 @@ class Attributes
 		@__defineGetter__ key, ->attrs
 		@__defineSetter__ key, (val)->attrs.set val
 		
-
-
 exports.Model = class Model
+	
 	constructor: (params)->
 		# @_attrs = new Attributes(@schema)
 		# 	@__defineGetter__ 'attrs', ->@_attrs
@@ -278,6 +279,11 @@ exports.Model = class Model
 		@attrs = {}
 		copy @defaults, @attrs
 		@set params
+		model = this
+		meta = -> model
+		meta.__proto__ = model
+		return meta
+		
 	
 	flat_errors:->
 		flatten=(key, obj)->
@@ -323,7 +329,6 @@ exports.Model = class Model
 			
 	# Save from a form
 	post:(fields, body)->
-		Muse.log 'posting',fields, body
 		for path in fields
 			opt = @options(path)
 			continue unless opt
@@ -369,6 +374,10 @@ exports.Model = class Model
 				o = o[p]
 		return o?.__proto__
 		
+		
+	@create:(options, cb)->
+		@new(options)('save', cb)
+		
 	@schemize:(schema)->
 		@::schema = at_validation.with schema
 		@::validation = at_validation.object @::schema
@@ -377,7 +386,23 @@ exports.Model = class Model
 	
 	@use:(adapter, options)->
 		require('./adapters/'+adapter).call(@, options)
-
+		
+		@get = Muse.Dana.wrap @_get
+		@view = Muse.Dana.wrap @_view
+		
+		@::save = Muse.Dana.wrap @::_save
+		
+	@new:(params)->
+		model = new @ params
+		
+		fn =(call)->
+			unless call?
+				model
+			else
+				model[call]
+				
+		fn.__proto__ = model.attrs
+		fn
 
 exports.Mock =->
 	_use = exports.Model.use

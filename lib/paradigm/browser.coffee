@@ -39,8 +39,9 @@ ParadigmBrowserResponse = class ParadigmBrowserResponse extends http.ServerRespo
 		target = @req.headers.referer if target is 'back'
 		target = @redirect.aliases[target] if target of @redirect.aliases
 		
+		
 		if target.indexOf '://'
-			@req.session.save => @callback action: 'redirect', target: target
+			return @req.session.save => @callback action: 'redirect', target: target
 		
 		@req.headers.referer = @req.url
 		
@@ -60,8 +61,10 @@ ParadigmBrowserRequest = class ParadigmBrowserRequest extends http.IncomingMessa
 		Muse.log 'cookie',args
 
 
-exports.get =(path, templates, callback, redirect)->
-	path = url.parse(path).pathname
+exports.get =(loc, templates, callback, redirect)->
+	parts = url.parse(loc)
+	path = parts.pathname + (parts.search or '')
+	
 	res = new ParadigmBrowserResponse
 		method: 'GET'
 		httpVersionMajor: 1
@@ -78,7 +81,7 @@ exports.get =(path, templates, callback, redirect)->
 		connection: @
 	
 	Muse.server.handle req, res, =>
-		@headers.referer = path.href
+		@headers.referer = parts.href
 
 exports.post =(path, templates, body, callback, redirect)->
 	path = url.parse(path).pathname

@@ -48,8 +48,6 @@ exports.View = class View
 	
 	render : (context, options = {}) ->
 		if options.template_chain?
-			console.log 'rendering ',@name,'chain', context.template_chain, 'for', options.template_chain
-			console.log 'blocks:', [name for name of context._blocks]
 			if @name in options.template_chain
 				unless context.template_chain?
 					return null
@@ -57,7 +55,6 @@ exports.View = class View
 				while options.template_chain[i]?
 					context.template_chain.push options.template_chain[i]
 					i++
-				Muse.log 'new template chain:',context.template_chain
 				return blocks: context._blocks, template_chain: context.template_chain
 		
 		context.template_chain ?= []

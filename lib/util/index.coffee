@@ -28,4 +28,9 @@ exports.fnJSON =(data)->
 	JSON.stringify data, (key, val)->
 		if typeof val is 'function' then "ƒ#{val.toString().replace(/\"/,'"')}ƒ" else val
 	
+exports.parameterize =(string)->
+	string.toLowerCase().replace(/\s/g, '-').replace(/[^\w\-]/g, '')
+	
 exports.logger = require './logger'
+
+Muse.Dana = require './dana'

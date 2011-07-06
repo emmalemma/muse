@@ -26,6 +26,7 @@ connect =(client)->
 	Muse.log 'paradigm client connected' #, client
 	client.on 'π', call
 	client.on 'headers', (headers)->
+		Muse.log 'client sent headers:',headers
 		client.headers = headers
 
 init =->
@@ -35,4 +36,5 @@ init =->
 exports.start =(server)->
 	js.build()
 	io = socket.io.listen(server)
+	io.settings['log level'] = 2
 	init()

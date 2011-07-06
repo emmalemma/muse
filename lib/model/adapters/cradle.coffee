@@ -9,21 +9,21 @@ module.exports =(options)->
 		@db = @client.database options.db
 		
 		
-		@get =(id, cb)->
+		@_get =(id, cb)->
 			unless id
 				return cb({error: 'no id supplied'})
 			model.db.get id, (err, doc)->
 				if err
 					return cb(err)
 				else
-					return cb null, new model(doc)
+					return cb null, model.new(doc)
 	
-		@view =(view, opts, cb)->
+		@_view =(view, opts, cb)->
 			model.db.view view, opts, (err, rows)->
 				if err
 					return cb(err)
 				else
-					return cb null, _.map(rows, (row)->new model(row.value))
+					return cb null, _.map(rows, (row)->model.new(row.value))
 		
 		@::save = @::_save =(cb)->
 			#cradle likes to have a callback
@@ -31,18 +31,18 @@ module.exports =(options)->
 				unless err
 					@attrs._id = resp.id
 					@attrs._rev = resp.rev
-				cb(err, resp) if cb
+				cb(err, @) if cb
 				
 	else
 		docs = {}
 		views = {}
-		@get = (id, cb)->
+		@_get = (id, cb)->
 			if id of docs
 				callback null, docs[id]
 			else
 				callback {error: 'not found'}
 				
-		@view = (view, opts, callback)->
+		@_view = (view, opts, callback)->
 			if view of views
 				if o = JSON.stringify(opts) of views[view]
 					callback null, views[view][o]
